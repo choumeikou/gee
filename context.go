@@ -49,6 +49,7 @@ func (c *Context) SetHeader(key string, value string) {
 }
 
 // 设置四种类型的响应内容，均采用字节切片方式传输
+// 响应的正确调用顺序是Header().Set,然后是WriteHeader()，最后是Write()
 func (c *Context) String(code int, format string, values ...interface{}) {
 	c.SetHeader("Content-Type", "text/plain")
 	c.Status(code)
@@ -59,7 +60,7 @@ func (c *Context) JSON(code int, obj interface{}) {
 	c.SetHeader("Content-Type", "application/json")
 	c.Status(code)
 	encoder := json.NewEncoder(c.Writer)
-	if err := encoder.Encode(obj); err != nil {
+	if err := encoder.Encode(obj); err != nil { //这里存在问题，如果err!=nil，http.Error不会生效，因为前面已经按顺序完成了Header().Set、WriteHeader()和Write()，gin框架render/json.go#L56中依靠return来规避这一系列操作
 		http.Error(c.Writer, err.Error(), 500)
 	}
 }
